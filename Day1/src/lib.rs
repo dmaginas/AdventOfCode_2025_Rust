@@ -37,13 +37,35 @@ pub fn solve(input: &str) -> Result<usize, String> {
 
         let delta = parse_rotation(line).map_err(|err| format!("Line {}: {err}", idx + 1))?;
 
+        zero_hits += zero_hits_for_rotation(position, delta);
         position = (position + delta).rem_euclid(100);
-        if position == 0 {
-            zero_hits += 1;
-        }
     }
 
     Ok(zero_hits)
+}
+
+fn zero_hits_for_rotation(start: i32, delta: i32) -> usize {
+    if delta == 0 {
+        return 0;
+    }
+
+    let distance = delta.abs();
+    let steps_to_first_hit = match delta.is_positive() {
+        true => {
+            let until_zero = (100 - start.rem_euclid(100)) % 100;
+            if until_zero == 0 { 100 } else { until_zero }
+        }
+        false => {
+            let until_zero = start.rem_euclid(100);
+            if until_zero == 0 { 100 } else { until_zero }
+        }
+    } as i32;
+
+    if distance < steps_to_first_hit {
+        0
+    } else {
+        1 + ((distance - steps_to_first_hit) / 100) as usize
+    }
 }
 
 fn parse_rotation(line: &str) -> Result<i32, ParseError> {
@@ -73,16 +95,23 @@ mod tests {
     const SAMPLE: &str = "L68\nL30\nR48\nL5\nR60\nL55\nL1\nL99\nR14\nL82\n";
 
     #[test]
-    fn sample_is_three() {
+    fn sample_counts_intermediate_hits() {
         let result = solve(SAMPLE).expect("should parse");
-        assert_eq!(result, 3);
+        assert_eq!(result, 6);
     }
 
     #[test]
     fn wraps_correctly() {
-        let input = "L60\nR150\n"; // 50 -> 90 -> 40
+        let input = "L60\nR150\n"; // 50 -> 90 -> 40, hits 0 three times in total
         let result = solve(input).expect("should parse");
-        assert_eq!(result, 0);
+        assert_eq!(result, 3);
+    }
+
+    #[test]
+    fn counts_multiple_loops() {
+        let input = "R1000\n";
+        let result = solve(input).expect("should parse");
+        assert_eq!(result, 10);
     }
 
     #[test]
